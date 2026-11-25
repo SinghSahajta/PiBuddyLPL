@@ -10,9 +10,11 @@ import type {
   MaintenanceRecord,
 } from '../types';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.port === '5173')
-  ? '/api'
-  : 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${String(import.meta.env.VITE_API_URL).replace(/\/+$/, '')}/api`
+  : (typeof window !== 'undefined' && window.location.port === '5173')
+    ? '/api'
+    : 'http://localhost:8000/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

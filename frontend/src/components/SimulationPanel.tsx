@@ -7,7 +7,7 @@ import {
   Sliders,
   CheckCircle,
 } from 'lucide-react';
-import { useSimulationStore } from '../store/simulationStore';
+import { useSimulationStore, SCENARIOS } from '../store/simulationStore';
 import { api } from '../api/client';
 
 interface SimulationPanelProps {
@@ -33,14 +33,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   const [isApplying, setIsApplying] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  const scenarios = [
-    { id: 'normal', name: 'Normal Operation', needsZone: false },
-    { id: 'duct_restriction', name: 'Duct Restriction / Blockage', needsZone: true },
-    { id: 'dust_increase', name: 'Dust Ingress / Spike', needsZone: true },
-    { id: 'damper_failure', name: 'Damper Actuator Failure', needsZone: true },
-    { id: 'filter_clog', name: 'Filter Heavy Clogging', needsZone: true },
-    { id: 'sensor_drift', name: 'Sensor Calibration Drift', needsZone: true },
-  ];
+  const scenarios = SCENARIOS;
 
   const currentScenarioObj = scenarios.find((s) => s.id === selectedScenario);
   const requiresZone = currentScenarioObj ? currentScenarioObj.needsZone : false;
@@ -95,10 +88,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       setSpeed(selectedSpeed);
       showFeedback(`Applied: ${selectedScenario.replace(/_/g, ' ')}`);
     } catch {
-      // Fallback
-      setScenario(selectedScenario, requiresZone ? selectedZone : undefined);
-      setSpeed(selectedSpeed);
-      showFeedback(`Set local: ${selectedScenario.replace(/_/g, ' ')}`);
+      showFeedback('Failed to apply scenario - backend rejected or unreachable');
     } finally {
       setIsApplying(false);
     }

@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import type { SensorReading, Zone, Alert, DashboardSummary } from '../types';
 
+// Scenarios the backend simulation engine actually supports (needsZone = affects the chosen zone).
+export const SCENARIOS = [
+  { id: 'normal', name: 'Normal Operation', needsZone: false },
+  { id: 'velocity_drop', name: 'Airflow Drop (Blockage)', needsZone: true },
+  { id: 'dust_increase', name: 'Dust Ingress / Spike', needsZone: true },
+  { id: 'pressure_rise', name: 'Filter Pressure Rise', needsZone: true },
+  { id: 'sensor_failure', name: 'Sensor Failure (offline)', needsZone: true },
+  { id: 'zone_a_restriction', name: 'Zone A Duct Restriction', needsZone: false },
+  { id: 'zone_b_restriction', name: 'Zone B Duct Restriction', needsZone: false },
+  { id: 'co2_rise', name: 'CO₂ Rise (all zones)', needsZone: false },
+  { id: 'energy_spike', name: 'Energy Spike (all zones)', needsZone: false },
+  { id: 'noisy_readings', name: 'Noisy Sensor Readings', needsZone: false },
+  { id: 'cleaning', name: 'Duct Cleaning Cycle', needsZone: false },
+];
+
 export interface SimulationStore {
   isRunning: boolean;
   scenario: string;

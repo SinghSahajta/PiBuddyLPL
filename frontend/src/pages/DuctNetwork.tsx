@@ -8,7 +8,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { api } from '../api/client';
-import { useSimulationStore } from '../store/simulationStore';
+import { useSimulationStore, SCENARIOS } from '../store/simulationStore';
 import { usePolling } from '../hooks/usePolling';
 import { StatusBadge } from '../components/StatusBadge';
 import type { SensorReading } from '../types';
@@ -18,7 +18,7 @@ export const DuctNetwork: React.FC = () => {
     useSimulationStore();
 
   const [selectedZoneId, setSelectedZoneId] = useState<string>('zone_a');
-  const [selectedScenario, setSelectedScenario] = useState<string>('duct_restriction');
+  const [selectedScenario, setSelectedScenario] = useState<string>('velocity_drop');
   const [actionZone, setActionZone] = useState<string>('zone_b');
   const [isApplying, setIsApplying] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -142,8 +142,7 @@ export const DuctNetwork: React.FC = () => {
       setTimeout(() => setActionMessage(null), 3500);
       fetchDuctData();
     } catch {
-      setScenario(selectedScenario, actionZone);
-      setActionMessage(`Simulated ${selectedScenario.replace(/_/g, ' ')} on ${actionZone.toUpperCase()}`);
+      setActionMessage('Failed to apply scenario - backend rejected or unreachable');
       setTimeout(() => setActionMessage(null), 3500);
     } finally {
       setIsApplying(false);
@@ -217,11 +216,11 @@ export const DuctNetwork: React.FC = () => {
               onChange={(e) => setSelectedScenario(e.target.value)}
               style={{ width: '220px', padding: '6px 10px', fontSize: '12px' }}
             >
-              <option value="duct_restriction">Duct Restriction / Blockage</option>
-              <option value="dust_increase">Dust Ingress / Filter Breach</option>
-              <option value="damper_failure">Damper Actuator Sticking</option>
-              <option value="filter_clog">Heavy Filter Clogging</option>
-              <option value="sensor_drift">Airflow Sensor Calibration Drift</option>
+              {SCENARIOS.filter((sc) => sc.id !== 'normal').map((sc) => (
+                <option key={sc.id} value={sc.id}>
+                  {sc.name}
+                </option>
+              ))}
             </select>
           </div>
 

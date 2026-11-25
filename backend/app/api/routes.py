@@ -21,6 +21,7 @@ from app.core.dependencies import (
     anomaly_detector,
     zone_classifier,
     statistical_detector,
+    reload_models,
 )
 from app.models.db_models import (
     Zone,
@@ -383,7 +384,7 @@ def get_analytics(db: Session = Depends(get_db)) -> Dict[str, Any]:
             readings_dicts.append(curr[zone_id])
 
         # Infer with autoencoder
-        if anomaly_detector is not None:
+        if anomaly_detector is not None and anomaly_detector.is_trained:
             ae_res = anomaly_detector.predict(readings_dicts)
         else:
             ae_res = {
@@ -484,15 +485,20 @@ def trigger_model_training(
             message="PyTorch not installed — training pipeline unavailable. Install torch to enable.",
             metrics={"status": "unavailable"},
         )
+    def train_and_reload():
+        result = run_training_pipeline()
+        reload_models()
+        return result
+
     if sync:
-        metrics = run_training_pipeline()
+        metrics = train_and_reload()
         return ModelTrainResponse(
             status="completed",
             message="Model training pipeline finished synchronously.",
             metrics=metrics,
         )
     else:
-        background_tasks.add_task(run_training_pipeline)
+        background_tasks.add_task(train_and_reload)
         return ModelTrainResponse(
             status="accepted",
             message="Model training pipeline dispatched in background.",

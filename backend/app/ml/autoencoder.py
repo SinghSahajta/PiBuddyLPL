@@ -128,12 +128,18 @@ class AnomalyDetector:
         self.scaler = StandardScaler()
         scaled_data = self.scaler.fit_transform(feature_data)
 
-        # 2. Create sliding window sequences
-        sequences = self._create_sequences(scaled_data)
+        # 2. Create sliding windows per zone (never across zone boundaries)
+        if "zone_id" in normal_data.columns:
+            zones = normal_data.loc[feature_data.index, "zone_id"].values
+            parts = [self._create_sequences(scaled_data[zones == z]) for z in np.unique(zones)]
+            sequences = np.concatenate([p for p in parts if len(p)])
+        else:
+            sequences = self._create_sequences(scaled_data)
         if len(sequences) == 0:
             raise ValueError("Insufficient data to form sequence windows.")
 
-        # 3. Train/Validation split (80/20)
+        # 3. Random 80/20 train/validation split so every zone appears in both
+        sequences = sequences[np.random.RandomState(0).permutation(len(sequences))]
         split_idx = int(0.8 * len(sequences))
         train_seqs = sequences[:split_idx]
         val_seqs = sequences[split_idx:] if split_idx < len(sequences) else sequences
@@ -176,8 +182,8 @@ class AnomalyDetector:
 
         val_mean = float(np.mean(val_errors))
         val_std = float(np.std(val_errors))
-        # Threshold: mean + 2.5 * standard deviation
-        self.threshold = round(val_mean + 2.5 * val_std, 4)
+        # Threshold: 25% above the worst normal validation window, so normal data from any zone stays below it
+        self.threshold = round(max(val_mean + 2.5 * val_std, float(np.max(val_errors)) * 1.25), 4)
         self.is_trained = True
 
         self.training_metrics = {
@@ -189,6 +195,33 @@ class AnomalyDetector:
             "epochs": epochs,
         }
         return self.training_metrics
+
+    def evaluate(self, df: pd.DataFrame) -> Dict[str, float]:
+        """Measure window-level anomaly detection on a labelled dataset (is_anomaly column)."""
+        preds, labels = [], []
+        L = self.sequence_length
+        self.model.eval()
+        for _, g in df.sort_values("timestamp").groupby(["zone_id", "scenario"]):
+            if len(g) < L:
+                continue
+            seqs = self._create_sequences(self.scaler.transform(g[self.FEATURES]))[::5]
+            y = g["is_anomaly"].values[L - 1:][::5][: len(seqs)]
+            with torch.no_grad():
+                t = torch.tensor(seqs, dtype=torch.float32)
+                err = torch.mean((t - self.model(t)) ** 2, dim=[1, 2]).numpy()
+            preds.extend((err > self.threshold).tolist())
+            labels.extend(y.astype(bool).tolist())
+        p, y = np.array(preds), np.array(labels)
+        tp, fp, fn = int((p & y).sum()), int((p & ~y).sum()), int((~p & y).sum())
+        precision = tp / max(tp + fp, 1)
+        recall = tp / max(tp + fn, 1)
+        return {
+            "accuracy": float((p == y).mean()),
+            "precision": precision,
+            "recall": recall,
+            "f1_score": 2 * precision * recall / max(precision + recall, 1e-9),
+            "windows": int(len(y)),
+        }
 
     def predict(self, readings: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Infer anomaly score and identify contributing sensor parameters.
@@ -275,7 +308,8 @@ class AnomalyDetector:
         if not os.path.exists(path):
             return False
         try:
-            checkpoint = torch.load(path, map_location=self.device)
+            # weights_only=False: the checkpoint also holds a pickled sklearn scaler (our own file)
+            checkpoint = torch.load(path, map_location=self.device, weights_only=False)
             self.model.load_state_dict(checkpoint["model_state_dict"])
             self.scaler = checkpoint.get("scaler")
             self.threshold = checkpoint.get("threshold", 0.048)
@@ -285,4 +319,6 @@ class AnomalyDetector:
             self.model.eval()
             return True
         except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to load autoencoder checkpoint %s", path)
             return False

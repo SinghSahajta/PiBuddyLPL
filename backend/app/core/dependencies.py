@@ -48,5 +48,13 @@ except ImportError:
         "scikit-learn not available — zone classifier disabled."
     )
 
+def reload_models() -> None:
+    """Re-read trained weights from disk (call after training finishes)."""
+    if anomaly_detector is not None:
+        anomaly_detector.load(os.path.join("models", "autoencoder.pt"))
+    if zone_classifier is not None:
+        zone_classifier.load(os.path.join("models", "zone_classifier.pkl"))
+
+
 # 4. Statistical Detector Singleton (always available — uses only numpy)
 statistical_detector: StatisticalDetector = StatisticalDetector()

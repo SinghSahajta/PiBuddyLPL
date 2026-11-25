@@ -46,8 +46,8 @@ class Settings(BaseSettings):
     VELOCITY_WARNING_LOW: float = 0.8
     VELOCITY_CRITICAL_LOW: float = 0.4
 
-    PRESSURE_WARNING: float = 50.0
-    PRESSURE_CRITICAL: float = 80.0
+    PRESSURE_WARNING: float = 40.0
+    PRESSURE_CRITICAL: float = 60.0
 
     POWER_WARNING: float = 1500.0
     POWER_CRITICAL: float = 2000.0

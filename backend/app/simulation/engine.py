@@ -260,56 +260,56 @@ class SimulationEngine:
 
         # Calculate scenario dynamics
         if scenario == "dust_increase":
-            progress = min(self.tick_count / 60.0, 1.0)
+            progress = min(self.tick_count / 15.0, 1.0)
             if affected == zone_id or (affected is None and zone_id == "zone_a"):
-                pm_mult = 1.0 + 2.0 * progress  # Up to 3.0x
+                pm_mult = 1.0 + 5.0 * progress  # Up to 6.0x
             else:
                 pm_mult = 1.0 + 0.20 * progress  # Up to 1.2x
 
         elif scenario == "velocity_drop":
-            progress = min(self.tick_count / 30.0, 1.0)
+            progress = min(self.tick_count / 10.0, 1.0)
             if affected == zone_id or (affected is None and zone_id == "zone_b"):
-                vel_mult = 1.0 - 0.70 * progress  # Drops to 30%
-                dp_mult = 1.0 + 0.40 * progress   # Rises +40%
+                vel_mult = 1.0 - 0.85 * progress  # Drops to 15%
+                dp_mult = 1.0 + 1.20 * progress   # Rises +120%
             else:
                 vel_mult = 1.0 - 0.10 * progress
 
         elif scenario == "pressure_rise":
-            progress = min(self.tick_count / 30.0, 1.0)
+            progress = min(self.tick_count / 10.0, 1.0)
             if affected == zone_id or (affected is None and zone_id == "zone_a"):
-                dp_mult = 1.0 + 0.80 * progress   # Rises +80%
+                dp_mult = 1.0 + 2.50 * progress   # Rises +250%
                 vel_mult = 1.0 - 0.15 * progress  # Drops slightly
             else:
                 dp_mult = 1.0 + 0.15 * progress
 
         elif scenario == "zone_a_restriction":
-            progress = min(self.tick_count / 30.0, 1.0)
+            progress = min(self.tick_count / 10.0, 1.0)
             if zone_id == "zone_a":
-                vel_mult = 1.0 - 0.60 * progress  # -60%
-                dp_mult = 1.0 + 1.00 * progress   # +100%
+                vel_mult = 1.0 - 0.80 * progress  # -80%
+                dp_mult = 1.0 + 2.00 * progress   # +200%
                 pm_mult = 1.0 + 0.50 * progress   # +50%
             elif zone_id == "zone_b":
                 vel_mult = 1.0 + 0.10 * progress  # Air diverted
                 dp_mult = 1.0 + 0.10 * progress
 
         elif scenario == "zone_b_restriction":
-            progress = min(self.tick_count / 30.0, 1.0)
+            progress = min(self.tick_count / 10.0, 1.0)
             if zone_id == "zone_b":
-                vel_mult = 1.0 - 0.55 * progress  # -55%
-                dp_mult = 1.0 + 0.90 * progress   # +90%
+                vel_mult = 1.0 - 0.75 * progress  # -75%
+                dp_mult = 1.0 + 1.50 * progress   # +150%
                 pm_mult = 1.0 + 0.40 * progress   # +40%
             elif zone_id == "zone_c":
                 vel_mult = 1.0 + 0.10 * progress  # Air diverted
 
         elif scenario == "co2_rise":
-            progress = min(self.tick_count / 40.0, 1.0)
+            progress = min(self.tick_count / 15.0, 1.0)
             # CO2 rises to 1500 ppm in all zones
             target_co2 = 1500.0
             co2_offset = (target_co2 - base["co2"]) * progress
 
         elif scenario == "energy_spike":
-            progress = min(self.tick_count / 20.0, 1.0)
-            power_mult = 1.0 + 0.80 * progress  # 1.8x baseline
+            progress = min(self.tick_count / 8.0, 1.0)
+            power_mult = 1.0 + 1.50 * progress  # 2.5x baseline
             pf_val = base["power_factor"] - (base["power_factor"] - 0.78) * progress
 
         elif scenario == "cleaning":

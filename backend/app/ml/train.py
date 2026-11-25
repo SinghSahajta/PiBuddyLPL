@@ -36,6 +36,8 @@ def run_training_pipeline() -> Dict[str, Any]:
     normal_df = df[df["scenario"] == "normal"].copy()
     detector = AnomalyDetector(sequence_length=20)
     ae_metrics = detector.train(normal_df, epochs=40, lr=0.001)
+    ae_eval = detector.evaluate(df)
+    ae_metrics.update(ae_eval)
     ae_model_path = "models/autoencoder.pt"
     detector.save(ae_model_path)
     print(f"      Autoencoder trained: MSE Threshold = {detector.threshold:.4f}")
@@ -62,10 +64,10 @@ def run_training_pipeline() -> Dict[str, Any]:
             db.add(ae_record)
         ae_record.trained_at = now
         ae_record.training_samples = int(ae_metrics.get("training_samples", len(normal_df)))
-        ae_record.validation_accuracy = 0.968
-        ae_record.precision_score = 0.955
-        ae_record.recall_score = 0.975
-        ae_record.f1_score = 0.965
+        ae_record.validation_accuracy = ae_eval["accuracy"]
+        ae_record.precision_score = ae_eval["precision"]
+        ae_record.recall_score = ae_eval["recall"]
+        ae_record.f1_score = ae_eval["f1_score"]
         ae_record.anomaly_threshold = float(detector.threshold)
         ae_record.is_trained = True
         ae_record.notes = (

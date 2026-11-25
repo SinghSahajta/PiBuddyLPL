@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import init_db, SessionLocal
-from app.core.dependencies import simulation_engine
+import os
+from app.core.dependencies import simulation_engine, anomaly_detector, reload_models
 from app.api.routes import router as api_router
 
 # Configure logging
@@ -83,6 +84,18 @@ async def startup_event() -> None:
         if readings_count == 0:
             logger.info("Generating initial sensor readings snapshot...")
             simulation_engine.tick(db)
+
+    # First boot (e.g. fresh deploy): no trained models on disk, so train them in the background
+    if anomaly_detector is not None and not os.path.exists(os.path.join("models", "autoencoder.pt")):
+        async def _first_train() -> None:
+            from app.ml.train import run_training_pipeline
+            try:
+                await asyncio.to_thread(run_training_pipeline)
+                reload_models()
+                logger.info("Initial model training finished.")
+            except Exception:
+                logger.exception("Initial model training failed.")
+        asyncio.create_task(_first_train())
 
     # Launch background simulation loop
     global simulation_task

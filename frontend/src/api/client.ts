@@ -47,17 +47,22 @@ const pickModel = (models: any[]): ModelInfo | undefined =>
 
 const adaptAnalytics = (d: any): AnalyticsData => {
   const preds = Object.entries<any>(d.zone_predictions || {});
-  const score = (p: any) => Math.max(p.autoencoder?.anomaly_score ?? 0, p.statistical?.overall_score ?? 0);
+  // Backend score = reconstruction error / threshold (1.0 = boundary). UI wants 0..1 with the boundary at 0.5.
+  const norm = (ratio: number) => Math.min(1, ratio / 2);
+  const score = (p: any) =>
+    p.autoencoder?.is_anomaly || p.statistical?.is_anomaly
+      ? Math.max(0.5, norm(p.autoencoder?.anomaly_score ?? 0))
+      : norm(p.autoencoder?.anomaly_score ?? 0);
   const [zoneId, worst] = preds.sort((a, b) => score(b[1]) - score(a[1]))[0] ?? ['zone_a', {}];
   const model = pickModel(d.models);
-  const threshold = worst.autoencoder?.threshold ?? 0.65;
+  const threshold = 0.5;
   return {
-    model_info: model as ModelInfo,
+    model_info: { ...(model as ModelInfo), anomaly_threshold: threshold },
     current_prediction: {
       timestamp: d.timestamp,
       zone_id: zoneId,
-      anomaly_score: Math.min(1, score(worst)),
-      is_anomaly: !!(worst.autoencoder?.is_anomaly || worst.statistical?.is_anomaly),
+      anomaly_score: score(worst),
+      is_anomaly: score(worst) >= threshold,
       suspected_zone: d.localization?.predicted_zone ?? 'normal',
       condition: worst.condition ?? 'Nominal HVAC Operation',
       explanation: worst.explanation ?? '',
@@ -69,7 +74,7 @@ const adaptAnalytics = (d: any): AnalyticsData => {
     },
     history: (d.anomaly_history || []).map((h: any) => ({
       timestamp: h.timestamp,
-      score: h.anomaly_score,
+      score: norm(h.anomaly_score),
       threshold,
       is_anomaly: h.is_anomaly,
     })),
@@ -141,7 +146,7 @@ export const api = {
     mapR(apiClient.get<any>(`/analytics`), adaptAnalytics),
 
   getModelStatus: (): Promise<AxiosResponse<ModelInfo>> =>
-    mapR(apiClient.get<any[]>(`/model/status`), (m) => pickModel(m) as ModelInfo),
+    mapR(apiClient.get<any[]>(`/model/status`), (m) => ({ ...pickModel(m), anomaly_threshold: 0.5 }) as ModelInfo),
 
   trainModel: (): Promise<AxiosResponse<{ success: boolean; message: string; model_info: ModelInfo }>> =>
     apiClient.post(`/model/train`),

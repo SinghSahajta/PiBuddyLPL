@@ -123,6 +123,7 @@ class AnomalyDetector:
         batch_size: int = 32,
     ) -> Dict[str, Any]:
         """Train autoencoder on nominal baseline HVAC sensor readings."""
+        torch.set_num_threads(2)  # containers expose few CPUs; torch's default (host core count) thrashes
         # 1. Prepare and scale features
         feature_data = normal_data[self.FEATURES].copy().dropna()
         self.scaler = StandardScaler()
